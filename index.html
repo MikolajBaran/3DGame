@@ -1,0 +1,381 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+	<meta charset="utf-8" />
+
+    <style>
+         body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+          #menu{
+            width: 100vw;
+            height: 10vh;
+            background-color: white;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+
+        #wdt{
+            position: absolute;
+            right: 50px;
+            bottom: 4vh;
+        }
+        #width{
+            width: 100px;
+            position: absolute;
+            right: 50px;
+            bottom: 1vh;
+        }
+    </style>
+
+    <script src="libs/three.js"></script>
+    <script src="js/Level.js"></script>
+    <script src="js/LevelData.js"></script>
+    <script src="js/MyLight.js"></script>
+    <script src="js/Stats.js"></script>
+    <script src="js/Fire.js"></script>
+    <script src="js/Laser.js"></script>
+
+    <script>
+            window.addEventListener("load", function () {
+
+                var scene = new THREE.Scene();
+                var camera = new THREE.PerspectiveCamera(
+                45, // kąt patrzenia kamery (FOV - field of view)
+                window.innerWidth / window.innerHeight, // proporcje widoku, powinny odpowiadać proporcjom naszego ekranu przeglądarki
+                0.1, // minimalna renderowana odległość
+                10000 // maxymalna renderowana odległość
+                );
+
+                var renderer = new THREE.WebGLRenderer();
+                renderer.setClearColor(0xffffff);
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMapEnabled = true
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+                document.getElementById("div1").appendChild(renderer.domElement);
+
+                
+                
+
+                var axis = new THREE.AxisHelper(10000);    // 200 - wielkość 
+                scene.add(axis);
+
+
+                var change;
+
+                document.getElementById("width").addEventListener("change", function () {
+                    change = document.getElementById("width").value;
+                   // console.log(change);
+
+                })
+
+
+                var level = new Level(scene);
+                //console.log(level.tabFire);
+                //console.log(level.fire)
+
+                var cam_up, cam_down, cam_left, cam_right, move, left, right, shoot = false;
+                document.addEventListener("keydown", onKeyDown, false);
+                function onKeyDown(event) {
+
+                    var keyCode = event.which;
+
+                    //console.log(keyCode); // wyloguj kod klawisza
+                    switch (keyCode) {
+
+                        //lewo
+                        case 37:
+                            //console.log("naciskasz <-");
+                            cam_left = true;
+                            break;
+                            //góra
+                        case 38:
+                            //console.log("naciskasz ^");
+                            cam_up = true;
+                            break;
+                            //prawo
+                        case 39:
+                           // console.log("naciskasz ->");
+                            cam_right = true;
+                            break;
+                            //dół
+                        case 40:
+                           // console.log("naciskasz v");
+                            cam_down = true;
+                            break;
+                            //lewo
+                        case 65:
+                          //  console.log("naciskasz a");
+                            left = true;
+                            break;
+                            //prawo
+                        case 68:
+                            //console.log("naciskasz d");
+                            right = true;
+                            break;
+                            //ruch do przodu
+                        case 87:
+                           // console.log("naciskasz w");
+                            move = true;
+                            break;
+                        case 32:
+                           // console.log("naciskasz spację");
+                            shoot = true;
+                            break;
+                    }
+                }
+                document.addEventListener("keyup", onKeyUp, false); //zwolnienie dowolnego klawisza
+                function onKeyUp(event) {
+
+                    var keyCode = event.which;
+
+                   // console.log(keyCode); // wyloguj kod klawisza
+                    switch (keyCode) {
+                        case 37:
+                          //  console.log("puszczasz <-");
+                            cam_left = false;
+                            break;
+                            //góra
+                        case 38:
+                          //  console.log("puszczasz ^");
+                            cam_up = false;
+                            break;
+                            //prawo
+                        case 39:
+                           // console.log("puszczasz ->");
+                            cam_right = false;
+                            break;
+                            //dół
+                        case 40:
+                          //  console.log("puszczasz v");
+                            cam_down = false;
+                            break;
+                            //lewo
+                        case 65:
+                         //   console.log("puszczasz a");
+                            left = false;
+                            break;
+                            //prawo
+                        case 68:
+                         //   console.log("puszczasz d");
+                            right = false;
+                            break;
+                            //ruch do przodu
+                        case 87:
+                         //   console.log("puszczasz w");
+                            move = false;
+                            break;
+                        case 32:
+                         //   console.log("puszczasz spację");
+                            shoot = false;
+                            break;
+                    }
+                }
+
+
+
+
+                ////////////////////////////////////
+
+                var material_player = new THREE.MeshBasicMaterial(
+             {
+                 map: THREE.ImageUtils.loadTexture("mats/santa.bmp"),
+                 morphTargets: true,
+
+             });
+
+                var material_player_weapon = new THREE.MeshBasicMaterial(
+                         {
+                             map: THREE.ImageUtils.loadTexture("mats/weapon_santa.bmp"),
+                             morphTargets: true,
+
+                         });
+
+                var loader = new THREE.JSONLoader();
+                var mixer;
+                var mixer2;
+                var chosenAnimation = "stand";
+                var meshModel;
+                var meshModel2;
+
+                loader.load('models/tris_santa.js', function (geometry) {
+
+                    meshModel = new THREE.Mesh(geometry, material_player)
+                    meshModel.name = "body-santa";
+
+                    var box = new THREE.Box3().setFromObject(meshModel);
+                    // console.log(box.getSize().y);
+
+                    meshModel.rotation.y = Math.PI; // ustaw obrót modelu
+                    meshModel.position.y = box.getSize().y - 25; // ustaw pozycje modelu
+                    meshModel.position.x = box.getSize().x;
+                    meshModel.position.z = box.getSize().z;
+                    meshModel.scale.set(1, 1, 1); // ustaw skalę modelu
+
+
+                    //console.log(geometry.animations)
+                    scene.add(meshModel);
+                    camera.position.x = box.getSize().x - 100;
+                    camera.position.y = box.getSize().y + 150;
+                    camera.position.z = box.getSize().z - 100;
+                    camera.lookAt(meshModel.position);
+                    mixer = new THREE.AnimationMixer(meshModel);
+                    mixer.clipAction("stand").play();
+
+                    loader.load('models/weapon_santa.js', function (geometry) {
+
+                        meshModel2 = new THREE.Mesh(geometry, material_player_weapon)
+                        meshModel2.name = "weapon-santa";
+
+                        var box = new THREE.Box3().setFromObject(meshModel2);
+                        console.log(box.getSize().y);
+
+                        meshModel2.rotation.y = Math.PI; // ustaw obrót modelu
+                        meshModel2.position.y = box.getSize().y + 18; // ustaw pozycje modelu
+                        meshModel2.position.x = box.getSize().x +7;
+                        meshModel2.position.z = box.getSize().z + 17;
+                        meshModel2.scale.set(1, 1, 1); // ustaw skalę modelu
+
+                        //console.log(geometry.animations)
+                        scene.add(meshModel2);
+
+                        mixer2 = new THREE.AnimationMixer(meshModel2);
+                        mixer2.clipAction("stand").play();
+
+                    })
+                })
+
+
+
+                //////////////////////////////////////
+
+                ////////////////////////////////////
+                
+                //console.log(meshModel2);
+                var v1 = new THREE.Vector3(10,10,10);
+                var v2 = new THREE.Vector3(1, 1, 1);
+               
+                var laser = new Laser(v1, v2);
+                
+
+                ////////////////////////////////////
+
+                Math.radians = function (degrees) {
+                    return degrees * Math.PI / 180;
+                };
+                var angle = 0;
+
+                var clock = new THREE.Clock();
+
+                var stats = new Stats();
+                stats.showPanel(0);
+                document.body.appendChild(stats.dom);
+
+
+                function animateScene() {
+                    stats.begin();
+                    //mesh.rotation.y += 0.01;
+                    requestAnimationFrame(animateScene);
+                    renderer.render(scene, camera);
+                    
+                    //console.log(level);
+                    //mesh.scale.set(1, 1, 1);
+                    
+                    camera.fov = 45;
+                    camera.updateProjectionMatrix();
+                    if (cam_down == true || cam_left == true || cam_right == true || cam_up == true) {
+                        if (cam_up == true) {
+                            camera.position.y += 10;
+                        }
+                        if (cam_down == true) {
+                            camera.position.y -= 10;
+                        }
+                        if (cam_left == true) {
+                            angle += 0.5;
+                            camera.position.x = 300 * Math.cos(Math.radians(angle));
+                            camera.position.z = 300 * Math.sin(Math.radians(angle));
+                        }
+                        if (cam_right == true) {
+                            angle -= 0.5;
+                            camera.position.x = 300 * Math.cos(Math.radians(angle));
+                            camera.position.z = 300 * Math.sin(Math.radians(angle));
+                        }
+                        camera.lookAt(meshModel.position);
+                    }
+                    else if (move == true || left == true || right == true){
+                        var camVect = new THREE.Vector3(100, 50, 0)
+                        var camPos = camVect.applyMatrix4(meshModel.matrixWorld);
+
+                        camera.position.x = camPos.x
+                        camera.position.y = camPos.y
+                        camera.position.z = camPos.z
+
+                        camera.lookAt(meshModel.position)
+                    }
+                    
+
+                    if (move == true) {
+                        mixer.clipAction("stand").stop();
+                        mixer2.clipAction("stand").stop();
+                        mixer.clipAction("run").play();
+                        mixer2.clipAction("run").play();
+                        meshModel.translateX(-1);
+                        meshModel2.translateX(-1);
+                    }
+                    else if (move == false) {
+                        mixer.clipAction("run").stop();
+                        mixer2.clipAction("run").stop();
+                        mixer.clipAction("stand").play();
+                        mixer2.clipAction("stand").play();
+                    }
+                    if (right == true) {
+                        meshModel.rotation.y -= 0.05;
+                        meshModel2.rotation.y -= 0.05;
+                    }
+                    if (left == true) {
+                        meshModel.rotation.y += 0.05;
+                        meshModel2.rotation.y += 0.05;
+                    }
+                    
+
+                    for (var i = 0; i < level.tabFire.length; i++) {
+                        level.fire.updateFire(level.tabFire[i].children);
+                    }
+                    
+                    
+
+                    var delta = clock.getDelta();
+                    //console.log(delta) // zobacz czy widać zmieniającą się cyfrę w konsoli 
+                    if (mixer) mixer.update(delta)
+                    if (mixer2) mixer2.update(delta)
+                    if (level.mixer3) level.mixer3.update(delta)
+                    if (level.mixer4) level.mixer4.update(delta)
+   
+
+                    if (shoot == true) {
+                        scene.add(laser.getLaser());
+                        laser.animateLaser();
+                    }
+                    else if (shoot == false) {
+                        scene.remove(laser.getLaser());
+                    }
+                    stats.end();
+                }
+                animateScene();
+            })
+    </script>
+</head>
+<body>
+<div id="div1"></div>
+    <div id="menu">
+        <h1 id="wdt">Szerokość</h1>
+        <input type="range" id="width" min="0" max="20" step="1" />
+    </div>
+</body>
+</html>
